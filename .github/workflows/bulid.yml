@@ -1,9 +1,7 @@
-name: Build APK
+name: Unzip and Build APK
 
 on:
   push:
-    branches: [ "main", "master" ]
-  pull_request:
     branches: [ "main", "master" ]
   workflow_dispatch:
 
@@ -22,8 +20,26 @@ jobs:
         java-version: '17'
         cache: 'gradle'
 
+    - name: Unzip Project Archive
+      run: |
+        # ابحث عن أول ملف مضغوط في المستودع وقم بفك ضغطه
+        ZIP_FILE=$(find . -maxdepth 1 -name "*.zip" | head -n 1)
+        if [ -n "$ZIP_FILE" ]; then
+          echo "Found zip file: $ZIP_FILE"
+          unzip -o "$ZIP_FILE" -d extracted_project
+          # نقل محتويات المجلد المفكوك إلى الجذر الرئيسي لبيئة البناء
+          rsync -avq extracted_project/ ./
+        else
+          echo "No zip file found, assuming source code is already unzipped."
+        fi
+
     - name: Grant execute permission for gradlew
-      run: chmod +x gradlew
+      run: |
+        if [ -f "gradlew" ]; then
+          chmod +x gradlew
+        else
+          gradle wrapper
+        fi
 
     - name: Build Debug APK with Gradle
       run: ./gradlew assembleDebug
