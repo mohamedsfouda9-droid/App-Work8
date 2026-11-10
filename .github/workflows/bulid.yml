@@ -1,4 +1,4 @@
-name: Unzip and Build APK
+name: Build APK from Zip
 
 on:
   push:
@@ -13,33 +13,27 @@ jobs:
     - name: Checkout Repository
       uses: actions/checkout@v4
 
+    - name: Unzip Project Archive
+      run: |
+        ZIP_FILE=$(find . -maxdepth 1 -name "*.zip" | head -n 1)
+        if [ -n "$ZIP_FILE" ]; then
+          echo "Found zip file: $ZIP_FILE"
+          unzip -o "$ZIP_FILE" -d extracted_project
+          # نقل كافة المحتويات المفكوكة إلى الجذر الرئيسي للمستودع
+          cp -r extracted_project/. ./
+        else
+          echo "No zip file found in root."
+        fi
+
     - name: Set up JDK 17
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         distribution: 'temurin'
         java-version: '17'
         cache: 'gradle'
 
-    - name: Unzip Project Archive
-      run: |
-        # ابحث عن أول ملف مضغوط في المستودع وقم بفك ضغطه
-        ZIP_FILE=$(find . -maxdepth 1 -name "*.zip" | head -n 1)
-        if [ -n "$ZIP_FILE" ]; then
-          echo "Found zip file: $ZIP_FILE"
-          unzip -o "$ZIP_FILE" -d extracted_project
-          # نقل محتويات المجلد المفكوك إلى الجذر الرئيسي لبيئة البناء
-          rsync -avq extracted_project/ ./
-        else
-          echo "No zip file found, assuming source code is already unzipped."
-        fi
-
     - name: Grant execute permission for gradlew
-      run: |
-        if [ -f "gradlew" ]; then
-          chmod +x gradlew
-        else
-          gradle wrapper
-        fi
+      run: chmod +x gradlew
 
     - name: Build Debug APK with Gradle
       run: ./gradlew assembleDebug
